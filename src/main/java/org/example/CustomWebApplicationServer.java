@@ -1,0 +1,56 @@
+package org.example;
+
+import org.example.calculate.PositiveNumber;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+
+public class CustomWebApplicationServer {
+    private final int port;
+    private final Logger logger = LoggerFactory.getLogger(CustomWebApplicationServer.class);
+
+    public CustomWebApplicationServer(int port) {
+        this.port = port;
+    }
+
+    public void start() throws IOException {
+        try(ServerSocket socket = new ServerSocket(port)){
+            logger.info("[CustomWebApplicationServer] started {} port.", port);
+
+            Socket clientSocket;
+            logger.info("[CustomWebApplicationServer] waiting for client");
+
+            while((clientSocket = socket.accept()) != null) {
+                logger.info("[CustomWebApplicationServer] client connected!");
+
+                try(InputStream in = clientSocket.getInputStream(); OutputStream out = clientSocket.getOutputStream()){
+                    BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+                    DataOutputStream dos = new DataOutputStream(out);
+
+                    HttpRequest httpRequest = new HttpRequest(br);
+
+                    //GET 요청이면서 path가 calculate인 경우 쿼리스트링을 가져온다.
+                    if(httpRequest.isGetRequest() && httpRequest.matchPath("/calculate")) {
+                        QueryStrings queryStrings = httpRequest.getQueryStrings();
+
+                        int operand1 = Integer.parseInt(queryStrings.getValue("operand1"));
+                        String operator = queryStrings.getValue("operator");
+                        int operand2 = Integer.parseInt(queryStrings.getValue("operand2"));
+
+                        int result = Calculator.calculateByInterface(new PositiveNumber(operand1), operator, new PositiveNumber(operand2));
+                        byte[] body = String.valueOf(result).getBytes();
+
+                        HttpResponse response = new HttpResponse(dos);
+                        response.response200Header("application/json", body.length);
+                        response.responseBody(body);
+
+                    }
+                }
+            }
+        }
+    }
+}
