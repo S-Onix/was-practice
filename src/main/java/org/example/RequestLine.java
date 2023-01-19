@@ -53,10 +53,6 @@ public class RequestLine {
         return Objects.hash(method, urlPath, queryStrings);
     }
 
-    public String getMethod() {
-        return this.method;
-    }
-
 
     public QueryStrings getQueryStrings() {
         return this.queryStrings;
